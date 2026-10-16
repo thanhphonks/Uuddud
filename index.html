@@ -1,1 +1,233 @@
 
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="theme-color" content="#0b1020">
+<title>VPN Studio</title>
+<style>
+:root{color-scheme:dark;--bg:#0b1020;--panel:#141c30;--line:#293650;--text:#eef4ff;--muted:#9eabc4;--blue:#6687ff;--green:#4adea4}
+*{box-sizing:border-box}
+body{margin:0;background:radial-gradient(circle at top,#19264b,var(--bg) 48%);color:var(--text);font:15px system-ui,sans-serif}
+main{max-width:720px;margin:auto;padding:22px 15px 45px}
+header{display:flex;align-items:center;gap:12px;margin-bottom:24px}
+.logo{width:48px;height:48px;display:grid;place-items:center;background:linear-gradient(135deg,#6d83ff,#9b5cff);border-radius:15px;font-size:25px}
+h1{font-size:24px;margin:0}p{color:var(--muted);line-height:1.55}
+.panel{background:#141c30eF;border:1px solid var(--line);border-radius:18px;padding:18px;margin:14px 0}
+h2{font-size:17px;margin:0 0 15px}
+label{display:block;font-weight:600;margin:14px 0 7px}
+input,select{width:100%;padding:13px;border:1px solid #34425e;border-radius:10px;background:#0b1223;color:white;font-size:15px}
+button{border:0;border-radius:11px;padding:13px 15px;font-weight:700;font-size:14px;cursor:pointer}
+.primary{background:linear-gradient(100deg,#627cff,#9b65ff);color:white;width:100%;margin-top:16px}
+.secondary{background:#26334d;color:#eef4ff}
+.row{display:flex;gap:9px;align-items:center}
+.row>*{min-width:0;flex:1}
+.small{font-size:12px;color:var(--muted)}
+.device{overflow-wrap:anywhere;background:#0b1223;padding:12px;border-radius:10px;color:var(--green);font-family:monospace}
+#status{color:var(--green);font-size:13px;margin-top:10px}
+#output{width:100%;min-height:220px;margin-top:12px;background:#080d19;color:#c9e2ff;border:1px solid var(--line);border-radius:10px;padding:12px;font:12px monospace}
+.warning{border-left:3px solid #ffbf69;padding:10px 12px;background:#332719;border-radius:6px;color:#ffe0b1;font-size:13px;line-height:1.55}
+footer{text-align:center;color:var(--muted);font-size:12px;margin-top:24px}
+</style>
+</head>
+<body>
+<main>
+<header>
+  <div class="logo">◈</div>
+  <div><h1>VPN Studio</h1><div class="small">Trình tạo cấu hình Sing-box</div></div>
+</header>
+
+<p>Tạo hồ sơ cho thiết bị này, nhập thông tin máy chủ của bạn và xuất cấu hình JSON.</p>
+
+<section class="panel">
+<h2>📱 Nhận diện thiết bị</h2>
+<p class="small">Mã được lưu trên trình duyệt này. Xóa dữ liệu trình duyệt hoặc đổi trình duyệt có thể làm mã thay đổi.</p>
+<div id="deviceId" class="device">Đang tạo mã...</div>
+<div class="row" style="margin-top:12px">
+<button class="secondary" id="newDevice">Tạo mã thiết bị mới</button>
+<button class="secondary" id="copyDevice">Sao chép mã</button>
+</div>
+<div id="status" role="status"></div>
+</section>
+
+<section class="panel">
+<h2>🌐 Thông tin máy chủ VPN</h2>
+<div class="warning">Bạn cần có máy chủ VLESS hợp lệ. UUID tự tạo ở đây chỉ là mã phía client; máy chủ phải được cấu hình chấp nhận UUID đó thì kết nối mới hoạt động.</div>
+
+<label for="server">Địa chỉ máy chủ / IP</label>
+<input id="server" placeholder="Ví dụ: vpn.example.com" autocomplete="url">
+
+<div class="row">
+<div><label for="port">Cổng</label><input id="port" type="number" min="1" max="65535" value="443"></div>
+<div><label for="tlsName">Tên máy chủ TLS</label><input id="tlsName" placeholder="vpn.example.com"></div>
+</div>
+
+<label for="uuid">UUID được máy chủ cấp</label>
+<div class="row">
+<input id="uuid" placeholder="Nhập UUID hợp lệ">
+<button class="secondary" id="makeUuid" style="flex:0 0 auto">Tạo UUID</button>
+</div>
+
+<label for="transport">Kiểu truyền tải</label>
+<select id="transport">
+<option value="tcp">TCP</option>
+<option value="ws">WebSocket (WS)</option>
+</select>
+
+<div id="wsFields" hidden>
+<label for="wsPath">WebSocket path</label>
+<input id="wsPath" value="/" placeholder="/">
+</div>
+
+<label for="tag">Tên cấu hình</label>
+<input id="tag" value="VPN thiết bị của tôi" maxlength="60">
+
+<button class="primary" id="generate">Tạo cấu hình JSON</button>
+</section>
+
+<section class="panel">
+<h2>📦 Cấu hình xuất ra</h2>
+<p class="small">Kiểm tra thông tin trước khi lưu. Không nhập mật khẩu hoặc khóa bí mật vào trang công khai.</p>
+<textarea id="output" spellcheck="false" placeholder="Cấu hình JSON sẽ xuất hiện ở đây..." readonly></textarea>
+<div class="row" style="margin-top:10px">
+<button class="secondary" id="copyJson">Sao chép JSON</button>
+<button class="secondary" id="download">Tải file .json</button>
+</div>
+</section>
+
+<footer>VPN Studio • Chạy trực tiếp trên trình duyệt • Không tự cung cấp máy chủ VPN</footer>
+</main>
+
+<script>
+const $ = id => document.getElementById(id);
+const STORAGE_KEY = "vpn-studio-device-id-v1";
+
+function uuidV4(){
+  if (crypto.randomUUID) return crypto.randomUUID();
+  const b = crypto.getRandomValues(new Uint8Array(16));
+  b[6] = (b[6] & 15) | 64;
+  b[8] = (b[8] & 63) | 128;
+  const h = [...b].map(x=>x.toString(16).padStart(2,"0")).join("");
+  return `${h.slice(0,8)}-${h.slice(8,12)}-${h.slice(12,16)}-${h.slice(16,20)}-${h.slice(20)}`;
+}
+
+function deviceId(){
+  let id = localStorage.getItem(STORAGE_KEY);
+  if(!id){ id = "device-" + uuidV4(); localStorage.setItem(STORAGE_KEY,id); }
+  return id;
+}
+function showDevice(){ $("deviceId").textContent = deviceId(); }
+showDevice();
+
+$("newDevice").onclick = () => {
+  if(!confirm("Tạo mã mới? Cấu hình đã xuất trước đó sẽ không tự thay đổi.")) return;
+  localStorage.setItem(STORAGE_KEY,"device-" + uuidV4());
+  showDevice();
+  $("status").textContent = "Đã tạo mã thiết bị mới.";
+};
+$("copyDevice").onclick = async () => {
+  await copyText(deviceId());
+};
+async function copyText(value){
+  try{
+    await navigator.clipboard.writeText(value);
+    $("status").textContent = "Đã sao chép.";
+  }catch(e){
+    $("status").textContent = "Trình duyệt không cho phép sao chép tự động. Hãy chọn và sao chép thủ công.";
+  }
+}
+$("makeUuid").onclick = () => { $("uuid").value = uuidV4(); };
+$("transport").onchange = () => {
+  $("wsFields").hidden = $("transport").value !== "ws";
+};
+
+let lastJson = "";
+
+$("generate").onclick = () => {
+  const server = $("server").value.trim();
+  const port = Number($("port").value);
+  const tlsName = $("tlsName").value.trim();
+  const uuid = $("uuid").value.trim();
+  const tag = $("tag").value.trim() || "VPN";
+  const transport = $("transport").value;
+
+  if(!server){ alert("Nhập địa chỉ máy chủ VPN."); return; }
+  if(!Number.isInteger(port) || port < 1 || port > 65535){
+    alert("Cổng phải nằm trong khoảng 1–65535."); return;
+  }
+  if(!/^[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(uuid)){
+    alert("Nhập UUID hợp lệ hoặc nhấn Tạo UUID. Hãy chắc chắn máy chủ đã được cấu hình UUID này."); return;
+  }
+  if(/[\/\s]/.test(server)){
+    alert("Địa chỉ máy chủ không được chứa dấu / hoặc khoảng trắng."); return;
+  }
+
+  const outbound = {
+    type: "vless",
+    tag: "proxy",
+    server,
+    server_port: port,
+    uuid,
+    tls: {
+      enabled: true,
+      server_name: tlsName || server,
+      utls: { enabled: true, fingerprint: "chrome" }
+    }
+  };
+
+  if(transport === "ws"){
+    outbound.transport = {
+      type: "ws",
+      path: $("wsPath").value.trim() || "/"
+    };
+  }
+
+  const config = {
+    log: { level: "info" },
+    inbounds: [{
+      type: "tun",
+      tag: "tun-in",
+      address: ["172.19.0.1/30"],
+      auto_route: true,
+      strict_route: true
+    }],
+    outbounds: [
+      outbound,
+      { type: "direct", tag: "direct" },
+      { type: "block", tag: "block" }
+    ],
+    route: {
+      auto_detect_interface: true,
+      final: "proxy"
+    },
+    // Ghi chú riêng cho người dùng; Sing-box có thể bỏ qua trường này.
+    x_device_profile: {
+      name: tag,
+      device_id: deviceId()
+    }
+  };
+
+  lastJson = JSON.stringify(config,null,2);
+  $("output").value = lastJson;
+  $("status").textContent = "Đã tạo JSON. Cần kiểm tra tương thích với phiên bản Sing-box và máy chủ.";
+};
+
+$("copyJson").onclick = async () => {
+  if(!lastJson){ alert("Hãy tạo cấu hình trước."); return; }
+  await copyText(lastJson);
+};
+$("download").onclick = () => {
+  if(!lastJson){ alert("Hãy tạo cấu hình trước."); return; }
+  const blob = new Blob([lastJson],{type:"application/json"});
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement("a");
+  a.href = url;
+  a.download = "sing-box-" + deviceId().slice(7,19) + ".json";
+  a.click();
+  setTimeout(()=>URL.revokeObjectURL(url),1000);
+};
+</script>
+</body>
+</html>
+
